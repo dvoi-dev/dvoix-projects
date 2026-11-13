@@ -23,6 +23,10 @@ German values (`aktiv`, `wartend`, `erledigt`, `hoch`, ...) are accepted as alia
 
 **Projects** in the sidebar shows running projects (or closed ones, or all), sorted by status and due date. Each card shows the status, area, priority, the due date, the next due open task and a progress bar. The plus button creates `New project.md` with the frontmatter above, in a `Projects` folder if the vault has one.
 
+## The dashboard
+
+The grid button in the panel (or the command **Open project dashboard**) opens all projects in a tab: a table with status, area, priority, start, due date and task progress, sortable by clicking a column head, and a timeline from each project's start to its due date with a line for today. Overdue running projects are outlined in red.
+
 ## Permissions
 
 - **Read files** (`vault:read`): reads the notes to find projects and follows changes.
