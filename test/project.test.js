@@ -66,3 +66,13 @@ test("due dates and new project paths", () => {
   assert.deepEqual(newProjectPath(entries), { path: "Projects/New project 2.md", name: "New project 2" });
   assert.deepEqual(newProjectPath([]), { path: "New project.md", name: "New project" });
 });
+
+test("timelineRange spans all dates and today, with padding", async () => {
+  const { timelineRange, daysBetween } = await import("../src/project.js");
+  assert.equal(timelineRange([{ start: null, due: null }], "2026-11-13"), null);
+  const r = timelineRange([{ start: "2026-11-01", due: "2026-12-01" }, { start: null, due: "2026-11-20" }], "2026-11-13");
+  assert.deepEqual(r, { from: "2026-10-29", to: "2026-12-04", days: 36 });
+  const past = timelineRange([{ start: null, due: "2026-01-10" }], "2026-11-13");
+  assert.equal(past.to, "2026-11-16");
+  assert.equal(daysBetween("2026-03-28", "2026-03-30"), 2);
+});

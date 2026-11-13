@@ -4,11 +4,12 @@
 // their modification time, so a change on disk reads only what changed.
 import { closed, dueBucket, formatDue, isoDate, newProjectNote, newProjectPath, readProject, sortProjects } from "./project.js";
 
-const STATUS_LABELS = { active: "Active", waiting: "Waiting", idea: "Idea", done: "Done", cancelled: "Cancelled" };
-const PRIORITY_LABELS = { high: "High", medium: "Medium", low: "Low" };
+export const STATUS_LABELS = { active: "Active", waiting: "Waiting", idea: "Idea", done: "Done", cancelled: "Cancelled" };
+export const PRIORITY_LABELS = { high: "High", medium: "Medium", low: "Low" };
+const GRID = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>';
 const PLUS = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>';
 
-function h(tag, attrs = {}, ...children) {
+export function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v == null || v === false) continue;
@@ -82,7 +83,7 @@ export class ProjectStore {
   }
 }
 
-export function mountPanel(el, store, dvoix) {
+export function mountPanel(el, store, dvoix, openDashboard) {
   let show = "running";
   el.classList.add("pj-panel");
 
@@ -158,7 +159,12 @@ export function mountPanel(el, store, dvoix) {
         "div",
         { class: "pj-top" },
         h("div", { class: "pj-segments", role: "group", "aria-label": "Show" }, segment("running", `Running ${running}`), segment("closed", "Closed"), segment("all", "All")),
-        h("button", { class: "pj-icon", title: "New project", "aria-label": "New project", html: PLUS, onclick: () => void createProject() }),
+        h(
+          "div",
+          { class: "pj-actions" },
+          h("button", { class: "pj-icon", title: "Open dashboard", "aria-label": "Open dashboard", html: GRID, onclick: openDashboard }),
+          h("button", { class: "pj-icon", title: "New project", "aria-label": "New project", html: PLUS, onclick: () => void createProject() }),
+        ),
       ),
       h("div", { class: "pj-list" }, list),
     );

@@ -1,7 +1,7 @@
 {
   "id": "projects",
   "name": "Projects",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Notes with \"type: project\" in their frontmatter, listed as projects with status, due date and progress.",
   "author": "damavoi",
   "minAppVersion": "0.1.0",

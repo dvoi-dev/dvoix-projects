@@ -223,3 +223,27 @@ export function newProjectPath(entries) {
   for (let n = 2; taken.has(`${prefix}${name}.md`.toLowerCase()); n++) name = `New project ${n}`;
   return { path: `${prefix}${name}.md`, name };
 }
+
+/**
+ * The span of days the dashboard timeline shows: from the earliest start or
+ * due date to the latest, always including today, padded by a few days so
+ * bars never touch the edges. Null when no project has a date.
+ */
+export function timelineRange(projects, now) {
+  const dates = projects.flatMap((p) => [p.start, p.due]).filter(Boolean);
+  if (!dates.length) return null;
+  dates.push(now);
+  dates.sort();
+  const from = addDays(dates[0], -3);
+  const to = addDays(dates[dates.length - 1], 3);
+  return { from, to, days: daysBetween(from, to) };
+}
+
+/** Whole days from `a` to `b` (both ISO dates); negative when `b` is earlier. */
+export function daysBetween(a, b) {
+  const t = (iso) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((t(b) - t(a)) / 86400000);
+}
