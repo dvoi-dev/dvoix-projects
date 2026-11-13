@@ -62,9 +62,9 @@ test("due dates and new project paths", () => {
   assert.equal(dueBucket("2026-11-20", "2026-11-13"), "week");
   assert.equal(formatDue("2026-11-14", "2026-11-13"), "tomorrow");
   assert.equal(formatDue("2027-01-05", "2026-11-13"), "Jan 5, 2027");
-  const entries = [{ path: "Projects", isDir: true }, { path: "Projects/New project.md", isDir: false }];
-  assert.deepEqual(newProjectPath(entries), { path: "Projects/New project 2.md", name: "New project 2" });
-  assert.deepEqual(newProjectPath([]), { path: "New project.md", name: "New project" });
+  const entries = [{ path: "Projects", isDir: true }, { path: "Projects/New project", isDir: true }];
+  assert.deepEqual(newProjectPath(entries), { path: "Projects/New project 2/New project 2.md", name: "New project 2" });
+  assert.deepEqual(newProjectPath([]), { path: "New project/New project.md", name: "New project" });
 });
 
 test("timelineRange spans all dates and today, with padding", async () => {
@@ -75,4 +75,29 @@ test("timelineRange spans all dates and today, with padding", async () => {
   const past = timelineRange([{ start: null, due: "2026-01-10" }], "2026-11-13");
   assert.equal(past.to, "2026-11-16");
   assert.equal(daysBetween("2026-03-28", "2026-03-30"), 2);
+});
+
+test("a project note alone in its folder makes the folder the project", async () => {
+  const { assembleProjects } = await import("../src/project.js");
+  const p = (path) => ({ path, title: path, status: "active", openTasks: 1, doneTasks: 0, nextDue: null });
+  const t = (open, done, nextDue = null) => ({ openTasks: open, doneTasks: done, nextDue });
+  const out = assembleProjects([
+    { path: "Projects/House/House.md", project: p("Projects/House/House.md"), tasks: t(1, 0) },
+    { path: "Projects/House/Offers.md", project: null, tasks: t(2, 1, "2026-11-20") },
+    { path: "Projects/House/Garden/Plan.md", project: null, tasks: t(0, 3) },
+    { path: "Projects/House/Shed/Shed.md", project: p("Projects/House/Shed/Shed.md"), tasks: t(1, 0) },
+    { path: "Projects/House/Shed/Wood.md", project: null, tasks: t(1, 1) },
+    { path: "Projects/A.md", project: p("Projects/A.md"), tasks: t(1, 0) },
+    { path: "Work/X.md", project: p("Work/X.md"), tasks: t(1, 0) },
+    { path: "Work/Y.md", project: p("Work/Y.md"), tasks: t(1, 0) },
+    { path: "Top.md", project: p("Top.md"), tasks: t(1, 0) },
+  ]);
+  const by = Object.fromEntries(out.map((x) => [x.path, x]));
+  assert.deepEqual(
+    [by["Projects/House/House.md"].folder, by["Projects/House/House.md"].openTasks, by["Projects/House/House.md"].doneTasks, by["Projects/House/House.md"].nextDue, by["Projects/House/House.md"].notes],
+    ["Projects/House", 3, 4, "2026-11-20", 3],
+  );
+  assert.deepEqual([by["Projects/House/Shed/Shed.md"].openTasks, by["Projects/House/Shed/Shed.md"].doneTasks], [2, 1]);
+  // Projects folder, a folder with two projects and the root stay single notes.
+  for (const k of ["Projects/A.md", "Work/X.md", "Work/Y.md", "Top.md"]) assert.equal(by[k].folder, null);
 });

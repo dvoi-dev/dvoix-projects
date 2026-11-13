@@ -214,14 +214,18 @@ export function newProjectNote(name, today) {
   return `---\ntype: project\nstatus: active\nstart: ${today}\ndue:\npriority:\narea:\n---\n# ${name}\n\n## Goal\n\n\n## Tasks\n\n- [ ] \n`;
 }
 
-/** A free path for a new project: `New project.md`, in a `Projects` folder if there is one. */
+/**
+ * A free path for a new project. Projects are usually folders, so the note
+ * gets its own folder: `New project/New project.md`, inside a `Projects`
+ * folder if the vault has one.
+ */
 export function newProjectPath(entries) {
-  const folder = entries.find((e) => e.isDir && /^(projects?|projekte?)$/i.test(e.path))?.path;
+  const folder = entries.find((e) => e.isDir && PROJECTS_FOLDER.test(e.path))?.path;
   const prefix = folder ? `${folder}/` : "";
   const taken = new Set(entries.map((e) => e.path.toLowerCase()));
   let name = "New project";
-  for (let n = 2; taken.has(`${prefix}${name}.md`.toLowerCase()); n++) name = `New project ${n}`;
-  return { path: `${prefix}${name}.md`, name };
+  for (let n = 2; taken.has(`${prefix}${name}`.toLowerCase()); n++) name = `New project ${n}`;
+  return { path: `${prefix}${name}/${name}.md`, name };
 }
 
 /**
@@ -246,4 +250,58 @@ export function daysBetween(a, b) {
     return Date.UTC(y, m - 1, d);
   };
   return Math.round((t(b) - t(a)) / 86400000);
+}
+
+const PROJECTS_FOLDER = /^(projects?|projekte?)$/i;
+
+function parentOf(path) {
+  const i = path.lastIndexOf("/");
+  return i < 0 ? "" : path.slice(0, i);
+}
+
+/**
+ * Turns the read notes into projects. A project note that is the only one in
+ * its folder makes that folder the project: the checkboxes of every note in
+ * the folder and its subfolders count, unless a subfolder is a project of its
+ * own. The vault root and a top-level `Projects` folder are never a project
+ * folder, because they usually hold many projects as single notes.
+ *
+ * `notes` is a list of `{ path, project, tasks }`, with `project` from
+ * `readProject` (or null) and `tasks` from `countTasks`.
+ */
+export function assembleProjects(notes) {
+  const perFolder = new Map();
+  for (const n of notes) {
+    if (!n.project) continue;
+    const dir = parentOf(n.path);
+    perFolder.set(dir, (perFolder.get(dir) ?? 0) + 1);
+  }
+  const folders = new Set();
+  for (const [dir, count] of perFolder) if (dir && count === 1 && !PROJECTS_FOLDER.test(dir)) folders.add(dir);
+
+  // The deepest project folder a note sits in owns its tasks.
+  const ownerOf = (path) => {
+    for (let dir = parentOf(path); dir; dir = parentOf(dir)) if (folders.has(dir)) return dir;
+    return null;
+  };
+  const sums = new Map();
+  for (const n of notes) {
+    const owner = ownerOf(n.path);
+    if (!owner || !n.tasks) continue;
+    const s = sums.get(owner) ?? { openTasks: 0, doneTasks: 0, nextDue: null, notes: 0 };
+    s.openTasks += n.tasks.openTasks;
+    s.doneTasks += n.tasks.doneTasks;
+    if (n.tasks.nextDue && (!s.nextDue || n.tasks.nextDue < s.nextDue)) s.nextDue = n.tasks.nextDue;
+    s.notes++;
+    sums.set(owner, s);
+  }
+
+  return notes
+    .filter((n) => n.project)
+    .map((n) => {
+      const dir = parentOf(n.path);
+      if (!folders.has(dir)) return { ...n.project, folder: null, notes: 1 };
+      const s = sums.get(dir);
+      return { ...n.project, folder: dir, openTasks: s.openTasks, doneTasks: s.doneTasks, nextDue: s.nextDue, notes: s.notes };
+    });
 }

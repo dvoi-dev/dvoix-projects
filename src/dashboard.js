@@ -110,8 +110,8 @@ export function mountDashboard(el, store, dvoix) {
       const total = p.openTasks + p.doneTasks;
       return h(
         "tr",
-        { class: "pj-row", onclick: () => void dvoix.vault.openFile(p.path), title: p.path },
-        h("td", { class: "pj-cell-title" }, p.title),
+        { class: "pj-row", onclick: () => void dvoix.vault.openFile(p.path), title: p.folder ? `Folder ${p.folder} (${p.notes} notes)` : p.path },
+        h("td", { class: "pj-cell-title" }, p.title, p.folder ? h("span", { class: "pj-folder" }, ` ${p.notes} notes`) : null),
         h("td", {}, h("span", { class: `pj-status pj-${p.status}` }, STATUS_LABELS[p.status])),
         h("td", { class: "pj-soft" }, p.area ?? ""),
         h("td", {}, p.priority ? h("span", { class: `pj-prio-${p.priority}` }, PRIORITY_LABELS[p.priority]) : ""),

@@ -2,7 +2,7 @@
 // per project with status, area, priority, due dates and task progress, and a
 // button for a new project. Notes are read through `dvoix.vault` and cached by
 // their modification time, so a change on disk reads only what changed.
-import { closed, dueBucket, formatDue, isoDate, newProjectNote, newProjectPath, readProject, sortProjects } from "./project.js";
+import { assembleProjects, closed, countTasks, splitFrontmatter, dueBucket, formatDue, isoDate, newProjectNote, newProjectPath, readProject, sortProjects } from "./project.js";
 
 export const STATUS_LABELS = { active: "Active", waiting: "Waiting", idea: "Idea", done: "Done", cancelled: "Cancelled" };
 export const PRIORITY_LABELS = { high: "High", medium: "Medium", low: "Low" };
@@ -65,14 +65,16 @@ export class ProjectStore {
       const hit = this.cache.get(e.path);
       if (hit && hit.modified === e.modified && hit.size === e.size) continue;
       try {
-        const project = readProject(e.path, await this.dvoix.vault.read(e.path));
-        this.cache.set(e.path, { modified: e.modified, size: e.size, project });
+        const content = await this.dvoix.vault.read(e.path);
+        // Every note's tasks are kept, because a note in a project folder counts for that project.
+        const tasks = countTasks(splitFrontmatter(content).body);
+        this.cache.set(e.path, { modified: e.modified, size: e.size, project: readProject(e.path, content), tasks });
       } catch {
         this.cache.delete(e.path);
       }
     }
     for (const path of [...this.cache.keys()]) if (!seen.has(path)) this.cache.delete(path);
-    this.projects = [...this.cache.values()].map((c) => c.project).filter(Boolean);
+    this.projects = assembleProjects([...this.cache.entries()].map(([path, c]) => ({ path, project: c.project, tasks: c.tasks })));
     this.loaded = true;
     for (const fn of this.listeners) fn();
   }
@@ -117,7 +119,7 @@ export function mountPanel(el, store, dvoix, openDashboard) {
       const total = p.openTasks + p.doneTasks;
       return h(
         "button",
-        { class: `pj-card ${active === p.path ? "pj-active" : ""}`, onclick: () => void dvoix.vault.openFile(p.path) },
+        { class: `pj-card ${active === p.path || (p.folder && active?.startsWith(`${p.folder}/`)) ? "pj-active" : ""}`, title: p.folder ? `Folder ${p.folder}` : p.path, onclick: () => void dvoix.vault.openFile(p.path) },
         h("div", { class: "pj-head" }, h("span", { class: "pj-title" }, p.title), h("span", { class: `pj-status pj-${p.status}` }, STATUS_LABELS[p.status])),
         h(
           "div",

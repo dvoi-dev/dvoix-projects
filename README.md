@@ -17,11 +17,15 @@ area: Work             # optional, free-form
 ---
 ```
 
+### Project folders
+
+A project is usually a folder. When a project note is the only project note in its folder, the whole folder is the project: the checkboxes of every note in it and in its subfolders count towards its progress and next due task. A subfolder with a project note of its own is a separate project. The vault root and a top-level `Projects` folder are never a project folder, so many single-note projects can live there side by side.
+
 German values (`aktiv`, `wartend`, `erledigt`, `hoch`, ...) are accepted as aliases. Tasks use the syntax of the app: `- [ ] Call back 📅 2026-11-20` or `due:2026-11-20`.
 
 ## The panel
 
-**Projects** in the sidebar shows running projects (or closed ones, or all), sorted by status and due date. Each card shows the status, area, priority, the due date, the next due open task and a progress bar. The plus button creates `New project.md` with the frontmatter above, in a `Projects` folder if the vault has one.
+**Projects** in the sidebar shows running projects (or closed ones, or all), sorted by status and due date. Each card shows the status, area, priority, the due date, the next due open task and a progress bar. The plus button creates a folder `New project` with the note `New project.md` in it, inside a `Projects` folder if the vault has one.
 
 ## The dashboard
 
