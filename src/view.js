@@ -2,13 +2,14 @@
 // per project with status, area, priority, due dates and task progress, and a
 // button for a new project. Notes are read through `dvoix.vault` and cached by
 // their modification time, so a change on disk reads only what changed.
-import { closed, dueBucket, formatDue, isoDate, newProjectNote, newProjectPath, readProject, sortProjects } from "./project.js";
+import { assembleProjects, closed, countTasks, splitFrontmatter, dueBucket, formatDue, isoDate, newProjectNote, newProjectPath, readProject, sortProjects } from "./project.js";
 
-const STATUS_LABELS = { active: "Active", waiting: "Waiting", idea: "Idea", done: "Done", cancelled: "Cancelled" };
-const PRIORITY_LABELS = { high: "High", medium: "Medium", low: "Low" };
+export const STATUS_LABELS = { active: "Active", waiting: "Waiting", idea: "Idea", done: "Done", cancelled: "Cancelled" };
+export const PRIORITY_LABELS = { high: "High", medium: "Medium", low: "Low" };
+const GRID = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>';
 const PLUS = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>';
 
-function h(tag, attrs = {}, ...children) {
+export function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v == null || v === false) continue;
@@ -64,14 +65,16 @@ export class ProjectStore {
       const hit = this.cache.get(e.path);
       if (hit && hit.modified === e.modified && hit.size === e.size) continue;
       try {
-        const project = readProject(e.path, await this.dvoix.vault.read(e.path));
-        this.cache.set(e.path, { modified: e.modified, size: e.size, project });
+        const content = await this.dvoix.vault.read(e.path);
+        // Every note's tasks are kept, because a note in a project folder counts for that project.
+        const tasks = countTasks(splitFrontmatter(content).body);
+        this.cache.set(e.path, { modified: e.modified, size: e.size, project: readProject(e.path, content), tasks });
       } catch {
         this.cache.delete(e.path);
       }
     }
     for (const path of [...this.cache.keys()]) if (!seen.has(path)) this.cache.delete(path);
-    this.projects = [...this.cache.values()].map((c) => c.project).filter(Boolean);
+    this.projects = assembleProjects([...this.cache.entries()].map(([path, c]) => ({ path, project: c.project, tasks: c.tasks })));
     this.loaded = true;
     for (const fn of this.listeners) fn();
   }
@@ -82,7 +85,7 @@ export class ProjectStore {
   }
 }
 
-export function mountPanel(el, store, dvoix) {
+export function mountPanel(el, store, dvoix, openDashboard) {
   let show = "running";
   el.classList.add("pj-panel");
 
@@ -116,7 +119,7 @@ export function mountPanel(el, store, dvoix) {
       const total = p.openTasks + p.doneTasks;
       return h(
         "button",
-        { class: `pj-card ${active === p.path ? "pj-active" : ""}`, onclick: () => void dvoix.vault.openFile(p.path) },
+        { class: `pj-card ${active === p.path || (p.folder && active?.startsWith(`${p.folder}/`)) ? "pj-active" : ""}`, title: p.folder ? `Folder ${p.folder}` : p.path, onclick: () => void dvoix.vault.openFile(p.path) },
         h("div", { class: "pj-head" }, h("span", { class: "pj-title" }, p.title), h("span", { class: `pj-status pj-${p.status}` }, STATUS_LABELS[p.status])),
         h(
           "div",
@@ -158,7 +161,12 @@ export function mountPanel(el, store, dvoix) {
         "div",
         { class: "pj-top" },
         h("div", { class: "pj-segments", role: "group", "aria-label": "Show" }, segment("running", `Running ${running}`), segment("closed", "Closed"), segment("all", "All")),
-        h("button", { class: "pj-icon", title: "New project", "aria-label": "New project", html: PLUS, onclick: () => void createProject() }),
+        h(
+          "div",
+          { class: "pj-actions" },
+          h("button", { class: "pj-icon", title: "Open dashboard", "aria-label": "Open dashboard", html: GRID, onclick: openDashboard }),
+          h("button", { class: "pj-icon", title: "New project", "aria-label": "New project", html: PLUS, onclick: () => void createProject() }),
+        ),
       ),
       h("div", { class: "pj-list" }, list),
     );

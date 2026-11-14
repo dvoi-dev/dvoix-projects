@@ -1,6 +1,7 @@
 // Entry point of the Projects plugin for dvoix: registers the projects panel
 // and keeps its list fresh with the vault's change events. Bundled into one
 // `main.js`, because the app loads store plugins as one ES module without imports.
+import { mountDashboard } from "./dashboard.js";
 import { ProjectStore, mountPanel } from "./view.js";
 
 const icon =
@@ -12,7 +13,10 @@ export default {
       throw new Error("This version of dvoix is too old for the Projects plugin. Please update the app.");
     }
     const store = new ProjectStore(dvoix);
-    dvoix.addPanel({ id: "projects", label: "Projects", icon, order: 50, mount: (el) => mountPanel(el, store, dvoix) });
+    dvoix.registerView({ id: "dashboard", label: "Projects", icon, mount: (el) => mountDashboard(el, store, dvoix) });
+    const openDashboard = () => void dvoix.openView("dashboard");
+    dvoix.addCommand({ id: "open-dashboard", name: "Open project dashboard", run: openDashboard });
+    dvoix.addPanel({ id: "projects", label: "Projects", icon, order: 50, mount: (el) => mountPanel(el, store, dvoix, openDashboard) });
 
     // A batch of changes is read once it settled; the changed notes are read
     // again even if their size and time look the same.
