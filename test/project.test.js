@@ -22,11 +22,11 @@ test("reads a project with its tasks", () => {
 });
 
 test("German aliases and defaults", () => {
-  const p = readProject("x/Umzug.md", "---\ntype: Projekt\nstatus: erledigt\npriority: mittel\ndue: 2026-12-01T10:00\n---\nText");
+  const p = readProject("x/Moving house.md", "---\ntype: Projekt\nstatus: erledigt\npriority: mittel\ndue: 2026-12-01T10:00\n---\nText");
   assert.equal(p.status, "done");
   assert.equal(p.priority, "medium");
   assert.equal(p.due, "2026-12-01");
-  assert.equal(p.title, "Umzug");
+  assert.equal(p.title, "Moving house");
   assert.equal(readProject("a.md", "---\ntype: project\nstatus: odd\n---\n").status, "active");
   assert.equal(readProject("a.md", "---\ntitle: T\ntype: project\n---\n# H").title, "T");
 });
